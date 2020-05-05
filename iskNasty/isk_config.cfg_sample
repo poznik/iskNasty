@@ -1,0 +1,22 @@
+﻿###REMOVE _sample BEFORE USING
+
+
+##iskNasty config file
+
+##app params
+#get app params from https://my.telegram.org/
+app_id=
+app_hash=
+
+#use your phone *without* two-factor auth
+phone=7xxxxxxxx
+
+##authdb params
+authdb_host=
+authdb_name=
+authdb_login=
+authdb_pass=
+
+##logic params
+#if true, isk dot ban users in channel&groups
+test_mode=true
