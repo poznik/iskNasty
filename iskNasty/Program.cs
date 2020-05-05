@@ -59,13 +59,14 @@ namespace iskNasty
             {
                 string phone = conf.Get("phone");
                 var hash = isk.StartAuthorisation(phone);
-                Console.Write("Get me code: ");
+                Console.Write($"Get me code, sended to phone +{phone}: ");
                 var code = Console.ReadLine();
                 isk.ProcessAuthorization(phone, hash, code);
             }
 
-            isk.StartUserCacheUpdate();
-            isk.StartChannelCheck();
+            //isk.StartUserCacheUpdate();
+            //isk.StartChannelCheck();
+            isk.GetUnreadMessages();
         }
 
         private static void Isk_OnUpdate(object sender, string e) => Console.WriteLine($"Update >> {e}");

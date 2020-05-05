@@ -50,154 +50,13 @@ namespace iskNasty
 
             _userCache = new List<AdUser>();
 
-            _cacheUpdateTimer = new System.Timers.Timer(1000 * 60 * 1); //обновление кеша известных пользователей раз в 10 минут
+            _cacheUpdateTimer = new System.Timers.Timer(1000 * 60 * 1); //обновление кеша известных пользователей раз в 1 мин
             _cacheUpdateTimer.Elapsed += _cacheUpdateTimer_Elapsed;
 
-            _channelsCheckTimer = new System.Timers.Timer(1000* 15);
+            _channelsCheckTimer = new System.Timers.Timer(1000* 15); //проверка каналов и чатов раз в 15 сек
             _channelsCheckTimer.Elapsed += _channelsCheckTimer_Elapsed;
 
             _isk = new TelegramClient(AppID, ApiHash);
-        }
-
-        public void StartChannelCheck()
-        {
-            _channelsCheckTimer.Enabled = true;
-        }
-        public void StartUserCacheUpdate()
-        {
-            _cacheUpdateTimer.Enabled = true;
-        }
-
-        private void _channelsCheckTimer_Elapsed(object sender, ElapsedEventArgs e)
-        {
-            _channelsCheckTimer.Enabled = false;
-            try
-            {
-                ProcessCheckChannels();
-                ProcessCheckChats();
-            }
-            catch(Exception ex)
-            {
-                OnError?.Invoke(this, $"Cant process check channels: {ex.Message}");
-            }
-            _channelsCheckTimer.Enabled = true;
-        }
-
-        private void ProcessCheckChannels()
-        {
-            OnDebug?.Invoke(this, "Check channels timer elapsed");
-
-            //защита от кика всех подряд
-            if (_userCache.Count <= 0)
-            {
-                OnError?.Invoke(this, "User cache empty! I can't kick all, sorry. Check db");
-                return;
-            }
-
-            var channels = GetAllChannels();
-            foreach (var channel in channels)
-            {
-                var users = GetChannelUsers(channel);
-                foreach (var user in users)
-                {
-                    var aduser = GetAdUser(user.Id.ToString());
-                    if (aduser == null)
-                    {
-                        KickFromChannel(channel, user, _testmode);
-                        OnInfo?.Invoke(this, $"User {user.FirstName}, {user.LastName}, {user.Username} kicked from channel {channel.Title}");
-                    }
-                }
-            }
-            OnDebug?.Invoke(this, "Check channels timer done");
-        }
-
-        public void ProcessCheckChats()
-        {
-            OnDebug?.Invoke(this, "Check chats timer elapsed");
-
-            //защита от кика всех подряд
-            if (_userCache.Count <= 0)
-            {
-                OnError?.Invoke(this, "User cache empty! I can't kick all, sorry. Check db");
-                return;
-            }
-
-            var chats = GetAllChats();
-            foreach (var chat in chats)
-            {
-                var users = GetChatUsers(chat);
-                foreach (var user in users)
-                {
-                    var aduser = GetAdUser(user.Id.ToString());
-                    if (aduser == null)
-                    {
-                        KickFromChat(chat, user, _testmode);
-                        OnInfo?.Invoke(this, $"User {user.FirstName}, {user.LastName}, {user.Username} kicked from chat {chat.Title}");
-                    }
-                }
-            }
-            OnDebug?.Invoke(this, "Check chats timer done");
-        }
-
-        private void _cacheUpdateTimer_Elapsed(object sender, ElapsedEventArgs e)
-        {
-            OnDebug?.Invoke(this, "Cache update timer elapsed");
-
-            try
-            {
-                UpdateUserCache();
-            }
-            catch (Exception ex)
-            {
-                OnError?.Invoke(this, $"UserCache not updated. Reason: [{ex.Message.ToString()}]");
-            }
-            OnDebug?.Invoke(this, "Cache update timer done");
-        }
-
-        public void UpdateUserCache()
-        {
-            OnDebug?.Invoke(this, "Start update user cache");
-            string select = $"select * from ng_users u where status = 1";
-
-            try
-            {
-                var dt = _authsqlw.Exec(select);
-
-                _userCache.Clear();
-
-                foreach (DataRow dr in dt.Rows)
-                {
-                    AdUser au = new AdUser();
-                    au.Email = dr["email"].ToString();
-                    au.status = dr["status"].ToString();
-                    au.userkey = dr["userkey"].ToString();
-                    au.userdata = dr["userdata"].ToString();
-                    au.roleGroup = dr["roleGroup"].ToString();
-                    au.TelegramID = dr["telegramid"].ToString();
-
-                    au.UserName = au.Email.Split('@')[0];
-
-                    _userCache.Add(au);
-
-                }
-                OnDebug?.Invoke(this, $"Updated {dt.Rows.Count} users");
-            }
-            catch (Exception ex)
-            {
-                OnError?.Invoke(this, ex.Message);
-            }            
-        }
-
-        public AdUser GetAdUser(string telegramID)
-        {
-            foreach (var u in _userCache)
-            {
-                if (u.TelegramID == telegramID)
-                {
-                    return u;
-                }
-            }
-            return null;
         }
 
         public bool Connect()
@@ -238,6 +97,80 @@ namespace iskNasty
         }
 
         #endregion Base
+
+        #region UserCache
+
+
+
+
+
+        private void _cacheUpdateTimer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            OnDebug?.Invoke(this, "Cache update timer elapsed");
+
+            try
+            {
+                UpdateUserCache();
+            }
+            catch (Exception ex)
+            {
+                OnError?.Invoke(this, $"UserCache not updated. Reason: [{ex.Message.ToString()}]");
+            }
+            OnDebug?.Invoke(this, "Cache update timer done");
+        }
+
+        public void StartUserCacheUpdate()
+        {
+            _cacheUpdateTimer.Enabled = true;
+        }
+
+        public void UpdateUserCache()
+        {
+            OnDebug?.Invoke(this, "Start update user cache");
+            string select = $"select * from ng_users u where status = 1";
+
+            try
+            {
+                var dt = _authsqlw.Exec(select);
+
+                _userCache.Clear();
+
+                foreach (DataRow dr in dt.Rows)
+                {
+                    AdUser au = new AdUser();
+                    au.Email = dr["email"].ToString();
+                    au.status = dr["status"].ToString();
+                    au.userkey = dr["userkey"].ToString();
+                    au.userdata = dr["userdata"].ToString();
+                    au.roleGroup = dr["roleGroup"].ToString();
+                    au.TelegramID = dr["telegramid"].ToString();
+
+                    au.UserName = au.Email.Split('@')[0];
+
+                    _userCache.Add(au);
+
+                }
+                OnDebug?.Invoke(this, $"Updated {dt.Rows.Count} users");
+            }
+            catch (Exception ex)
+            {
+                OnError?.Invoke(this, ex.Message);
+            }
+        }
+
+        public AdUser GetAdUser(string telegramID)
+        {
+            foreach (var u in _userCache)
+            {
+                if (u.TelegramID == telegramID)
+                {
+                    return u;
+                }
+            }
+            return null;
+        }
+
+        #endregion UserCache
 
         #region Messages
 
@@ -299,6 +232,21 @@ namespace iskNasty
         #endregion Messages
 
         #region Channels
+
+        private void _channelsCheckTimer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            _channelsCheckTimer.Enabled = false;
+            try
+            {
+                ProcessCheckChannels();
+                ProcessCheckChats();
+            }
+            catch (Exception ex)
+            {
+                OnError?.Invoke(this, $"Cant process check channels: {ex.Message}");
+            }
+            _channelsCheckTimer.Enabled = true;
+        }
 
         public TLChannel GetChannelByName(string ChannelName)
         {
@@ -402,6 +350,105 @@ namespace iskNasty
 
         }
 
-        #endregion Channels       
+        public void StartChannelCheck()
+        {
+            _channelsCheckTimer.Enabled = true;
+        }
+
+        private void ProcessCheckChannels()
+        {
+            OnDebug?.Invoke(this, "Check channels timer elapsed");
+
+            //защита от кика всех подряд
+            if (_userCache.Count <= 0)
+            {
+                OnError?.Invoke(this, "User cache empty! I can't kick all, sorry. Check db");
+                return;
+            }
+
+            var channels = GetAllChannels();
+            foreach (var channel in channels)
+            {
+                var users = GetChannelUsers(channel);
+                foreach (var user in users)
+                {
+                    var aduser = GetAdUser(user.Id.ToString());
+                    if (aduser == null)
+                    {
+                        KickFromChannel(channel, user, _testmode);
+                        OnInfo?.Invoke(this, $"User {user.FirstName}, {user.LastName}, {user.Username} kicked from channel {channel.Title}");
+                    }
+                }
+            }
+            OnDebug?.Invoke(this, "Check channels timer done");
+        }
+
+        public void ProcessCheckChats()
+        {
+            OnDebug?.Invoke(this, "Check chats timer elapsed");
+
+            //защита от кика всех подряд
+            if (_userCache.Count <= 0)
+            {
+                OnError?.Invoke(this, "User cache empty! I can't kick all, sorry. Check db");
+                return;
+            }
+
+            var chats = GetAllChats();
+            foreach (var chat in chats)
+            {
+                var users = GetChatUsers(chat);
+                foreach (var user in users)
+                {
+                    var aduser = GetAdUser(user.Id.ToString());
+                    if (aduser == null)
+                    {
+                        KickFromChat(chat, user, _testmode);
+                        OnInfo?.Invoke(this, $"User {user.FirstName}, {user.LastName}, {user.Username} kicked from chat {chat.Title}");
+                    }
+                }
+            }
+            OnDebug?.Invoke(this, "Check chats timer done");
+        }
+
+        #endregion Channels
+
+        #region Messaging
+
+        public void GetUnreadMessages()
+        {
+            var dialogs = (TLDialogs)_isk.GetUserDialogsAsync().Result;
+            foreach (var dia in dialogs.Dialogs)
+            {
+                if (dia.UnreadCount < 1) continue;
+
+
+
+
+                if (dia.Peer is TLPeerUser)
+                {
+                    var peer = dia.Peer as TLPeerUser;
+                    var chat = dialogs.Users.OfType<TLUser>().First(x => x.Id == peer.UserId);
+                    var target = new TLInputPeerUser{UserId = chat.Id, AccessHash = chat.AccessHash.Value};
+                    
+                    var hist = _isk.GetHistoryAsync(target, 0, -1, dia.UnreadCount).Result;                   
+
+                    if (hist is TLMessagesSlice)
+                    {
+                        int index = 0;
+                        foreach (var m in ((TLMessagesSlice)hist).Messages.Cast<TLMessage>().Where(c => c.Post == true ))                   
+                        {
+                            TLMessage msg = m as TLMessage;
+
+                            if (msg.Post == false) { }
+
+                            OnInfo?.Invoke(this, $"{msg.Id} {msg.Message} {msg.FromId}");
+                        }
+                    }
+                }
+            }
+        }
+
+        #endregion Messaging
     }
 }
